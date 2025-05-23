@@ -24,7 +24,7 @@ describe('body encoding', function() {
   var largePngData = Buffer.from(pngHex.repeat(100000), 'hex'); // 6.7MB
 
   it('allow raw data', function(done) {
-    var filename = os.tmpdir() + '/koa-better-http-proxy-test-' + (new Date()).getTime() + '-png-transparent.png';
+    var filename = os.tmpdir() + '/koa-http-proxy-test-' + (new Date()).getTime() + '-png-transparent.png';
     var app = new Koa();
 
     app.use(proxy('localhost:8109', {
@@ -57,7 +57,7 @@ describe('body encoding', function() {
 
   // In this case, the package `raw-body` will print error stack which does not mater.
   it('should get 413 by posting file which is larger than 1mb without setting limit', function(done) {
-    var filename = os.tmpdir() + '/koa-better-http-proxy-test-' + (new Date()).getTime() + '-png-transparent.png';
+    var filename = os.tmpdir() + '/koa-http-proxy-test-' + (new Date()).getTime() + '-png-transparent.png';
     var app = new Koa();
     app.use(proxy('localhost:8109', {
     }));
@@ -77,7 +77,7 @@ describe('body encoding', function() {
   });
 
   it('should not fail on large limit', function(done) {
-    var filename = os.tmpdir() + '/koa-better-http-proxy-test-' + (new Date()).getTime() + '-png-transparent.png';
+    var filename = os.tmpdir() + '/koa-http-proxy-test-' + (new Date()).getTime() + '-png-transparent.png';
     var app = new Koa();
     app.use(proxy('localhost:8109', {
       // This case `parseReqBody` should not be set to false,
@@ -101,7 +101,7 @@ describe('body encoding', function() {
   describe('when user sets parseReqBody', function() {
 
     it('should not parse body', function(done) {
-      var filename = os.tmpdir() + '/koa-better-http-proxy-test-' + (new Date()).getTime() + '-png-transparent.png';
+      var filename = os.tmpdir() + '/koa-http-proxy-test-' + (new Date()).getTime() + '-png-transparent.png';
       var app = new Koa();
       app.use(proxy('localhost:8109', {
         parseReqBody: false,
