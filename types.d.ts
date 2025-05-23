@@ -43,10 +43,12 @@ declare namespace koaHttpProxy {
     reqBodyEncoding?: string | null;
     connectTimeout?: number;
     timeout?: number;
-    debug?: boolean | {
-      enabled: boolean;
-      includeBody?: boolean;
-    };
+    debug?:
+      | boolean
+      | {
+          enabled: boolean;
+          includeBody?: boolean;
+        };
     filter?(ctx: koa.Context): boolean;
     proxyReqBodyDecorator?(
       bodyContent: string,

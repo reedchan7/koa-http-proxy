@@ -124,9 +124,15 @@ function executeWithBuiltinRetry(container) {
           } else {
             // Body too large to cache - disable retries for safety
             canCache = false;
-            console.warn('[koa-http-proxy] Body size exceeds cache limit (' + 
-              Math.round(getBodySize(result.proxy.bodyContent) / 1024 / 1024) + 'MB > ' +
-              Math.round(MAX_CACHEABLE_BODY_SIZE / 1024 / 1024) + 'MB). Retries disabled to prevent OOM.');
+            console.warn(
+              "[koa-http-proxy] Body size exceeds cache limit (" +
+                Math.round(
+                  getBodySize(result.proxy.bodyContent) / 1024 / 1024,
+                ) +
+                "MB > " +
+                Math.round(MAX_CACHEABLE_BODY_SIZE / 1024 / 1024) +
+                "MB). Retries disabled to prevent OOM.",
+            );
           }
         }
 
@@ -208,7 +214,9 @@ function executeWithRetry(container) {
 
   // If parseReqBody is false (streaming mode), disable retry for safety
   if (!container.options.parseReqBody) {
-    console.log('[koa-http-proxy] Streaming mode detected (parseReqBody: false). Retry disabled for stream safety.');
+    console.log(
+      "[koa-http-proxy] Streaming mode detected (parseReqBody: false). Retry disabled for stream safety.",
+    );
     return executeProxySteps(container);
   }
 
@@ -235,11 +243,17 @@ function executeWithRetry(container) {
             } else {
               // Body too large to cache - warn user but allow continued execution
               canCache = false;
-              console.warn('[koa-http-proxy] Body size exceeds cache limit (' + 
-                Math.round(getBodySize(result.proxy.bodyContent) / 1024 / 1024) + 'MB > ' +
-                Math.round(MAX_CACHEABLE_BODY_SIZE / 1024 / 1024) + 'MB). ' +
-                'Subsequent retry calls may fail due to stream reuse. ' +
-                'Consider disabling retry for large uploads.');
+              console.warn(
+                "[koa-http-proxy] Body size exceeds cache limit (" +
+                  Math.round(
+                    getBodySize(result.proxy.bodyContent) / 1024 / 1024,
+                  ) +
+                  "MB > " +
+                  Math.round(MAX_CACHEABLE_BODY_SIZE / 1024 / 1024) +
+                  "MB). " +
+                  "Subsequent retry calls may fail due to stream reuse. " +
+                  "Consider disabling retry for large uploads.",
+              );
             }
           }
           return result;
@@ -248,8 +262,10 @@ function executeWithRetry(container) {
         // Subsequent calls: use fresh container with cached body
         if (!canCache) {
           // Cannot safely retry due to large body
-          throw new Error('[koa-http-proxy] Cannot retry: body too large to cache safely. ' +
-            'Disable retry for large file uploads to prevent this error.');
+          throw new Error(
+            "[koa-http-proxy] Cannot retry: body too large to cache safely. " +
+              "Disable retry for large file uploads to prevent this error.",
+          );
         }
         currentContainer = createContainerWithCachedBody(container, cachedBody);
         return executeProxySteps(currentContainer);

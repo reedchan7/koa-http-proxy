@@ -29,7 +29,9 @@ new Koa()
         while (attempt++ < maxAttempts) {
           console.info(`Attempt ${attempt} of ${maxAttempts}`);
           result = await handle();
-          console.info(`Attempt ${attempt} result: ${result.proxy.res?.statusCode}`);
+          console.info(
+            `Attempt ${attempt} result: ${result.proxy.res?.statusCode}`,
+          );
         }
 
         // CRITICAL FIX: Must return the final result!

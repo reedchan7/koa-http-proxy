@@ -9,7 +9,7 @@ function buildProxyReq(Container) {
 
   // Evaluate parseReqBody - can be boolean or function
   var shouldParseBody;
-  if (typeof options.parseReqBody === 'function') {
+  if (typeof options.parseReqBody === "function") {
     shouldParseBody = options.parseReqBody(ctx);
   } else {
     shouldParseBody = options.parseReqBody;

@@ -27,27 +27,32 @@ function debugLogRequest(reqOpt, bodyContent, options) {
   // Handle both boolean and object debug configurations
   var debugEnabled = false;
   var includeBody = false;
-  
+
   if (options.debug === true) {
     debugEnabled = true;
     includeBody = false;
-  } else if (options.debug && typeof options.debug === 'object') {
+  } else if (options.debug && typeof options.debug === "object") {
     debugEnabled = options.debug.enabled;
     includeBody = options.debug.includeBody;
   }
-  
+
   if (!debugEnabled) return;
 
   var protocol = reqOpt.port === 443 || options.https ? "https" : "http";
-  var isStandardPort = (protocol === "https" && reqOpt.port === 443) || 
-                       (protocol === "http" && reqOpt.port === 80);
-  var url = protocol + "://" + reqOpt.host + 
-            (isStandardPort ? "" : ":" + reqOpt.port) + reqOpt.path;
+  var isStandardPort =
+    (protocol === "https" && reqOpt.port === 443) ||
+    (protocol === "http" && reqOpt.port === 80);
+  var url =
+    protocol +
+    "://" +
+    reqOpt.host +
+    (isStandardPort ? "" : ":" + reqOpt.port) +
+    reqOpt.path;
   var payloadSize = getPayloadSize(bodyContent);
 
   console.log("");
   console.log(
-    "======================================= KOA-HTTP-PROXY DEBUG ======================================="
+    "======================================= KOA-HTTP-PROXY DEBUG =======================================",
   );
   console.log(reqOpt.method + " " + url);
 
@@ -63,7 +68,7 @@ function debugLogRequest(reqOpt, bodyContent, options) {
     console.log("Request Body:");
     try {
       // Try to parse as JSON and format it
-      if (typeof bodyContent === 'string') {
+      if (typeof bodyContent === "string") {
         var parsed = JSON.parse(bodyContent);
         console.log(JSON.stringify(parsed, null, 2));
       } else if (Buffer.isBuffer(bodyContent)) {
@@ -75,7 +80,7 @@ function debugLogRequest(reqOpt, bodyContent, options) {
           // If not JSON, show as string
           console.log(bodyContent.toString());
         }
-      } else if (typeof bodyContent === 'object') {
+      } else if (typeof bodyContent === "object") {
         console.log(JSON.stringify(bodyContent, null, 2));
       } else {
         console.log(bodyContent);
@@ -87,7 +92,7 @@ function debugLogRequest(reqOpt, bodyContent, options) {
   }
 
   console.log(
-    "===================================================================================================="
+    "====================================================================================================",
   );
   console.log("");
 }
@@ -155,7 +160,7 @@ function sendProxyRequest(Container) {
           "X-Timout-Reason",
           "koa-http-proxy timed out your request after " +
             timeoutDuration +
-            "ms."
+            "ms.",
         );
         ctx.set("Content-Type", "text/plain");
         ctx.status = 504;
