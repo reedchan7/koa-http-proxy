@@ -349,6 +349,8 @@ app.use(proxy('httpbin.org', {
 
 #### retry
 
+> ⚠️ **IMPORTANT MEMORY WARNING**: The retry feature caches request body content in memory to handle stream reuse. For large file uploads (>20MB), retry is automatically disabled to prevent out-of-memory (OOM) errors. **Disable retry manually for file upload endpoints** to avoid potential memory issues.
+
 Configure automatic retry behavior for failed proxy requests. Supports three forms:
 
 ##### Simple retry (boolean)
@@ -386,121 +388,193 @@ The built-in retry logic uses exponential backoff with jitter and automatically 
 - Network errors (ECONNRESET, ECONNREFUSED, ETIMEDOUT, ENOTFOUND)
 - Server errors (5xx status codes)
 
-##### Custom retry function
+##### Custom retry function - **Simplified API**
 
-Implement your own retry logic with full control:
+Implement your own retry logic with a simple, Koa-middleware-style API:
 
 ```js
 app.use(proxy('httpbin.org', {
-  retry: function(executeHandler, ctx) {
-    // executeHandler is a function that performs the proxy request
-    // ctx is the Koa context object
+  retry: async function(handle, ctx) {
+    // handle() - Call this function to execute the proxy request
+    // ctx - Koa context object
     
-    // Example: Custom retry with different logic for different methods
-    if (ctx.method === 'POST') {
-      // Don't retry POST requests to avoid duplicates
-      return executeHandler();
+    // Simple example: Execute exactly 3 times regardless of result
+    let result;
+    for (let i = 1; i <= 3; i++) {
+      console.log(`Attempt ${i} of 3`);
+      result = await handle(); // Just like calling next() in Koa middleware
+      console.log(`Attempt ${i} status: ${result.proxy.res?.statusCode}`);
     }
-    
-    // Custom retry logic for GET requests
-    var maxAttempts = 3;
-    var attempt = 0;
-    
-    function tryRequest() {
-      return executeHandler()
-        .catch(function(error) {
-          attempt++;
-          
-          // Don't retry client errors (4xx)
-          if (error.status >= 400 && error.status < 500) {
-            throw error;
-          }
-          
-          // Retry on network errors and server errors
-          if (attempt < maxAttempts && 
-              (error.code === 'ECONNRESET' || error.status >= 500)) {
-            var delay = 1000 * Math.pow(2, attempt - 1); // Exponential backoff
-            return new Promise(function(resolve, reject) {
-              setTimeout(function() {
-                tryRequest().then(resolve).catch(reject);
-              }, delay);
-            });
-          }
-          
-          throw error;
-        });
-    }
-    
-    return tryRequest();
+    return result; // IMPORTANT: Must return the final result
   }
 }));
 ```
 
-##### Advanced Examples
+**Key Points:**
+- **`handle()`** - Simple function to execute proxy request (like `next()` in Koa)
+- **Return result** - Always return the final result to send response to client
+- **Automatic body caching** - First call caches body, subsequent calls reuse it
+- **Stream safety** - No "stream already read" errors
+
+##### Practical Examples
+
+**Retry with custom logic:**
+```js
+app.use(proxy('api.example.com', {
+  retry: async function(handle, ctx) {
+    const maxAttempts = 3;
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const result = await handle();
+        
+        // Success or non-retryable status
+        if (result.proxy.res.statusCode < 500) {
+          return result;
+        }
+        
+        // Server error - retry if not last attempt
+        if (attempt < maxAttempts) {
+          console.log(`Server error ${result.proxy.res.statusCode}, retrying in ${attempt}s...`);
+          await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+          continue;
+        }
+        
+        return result; // Return final result even if error
+      } catch (error) {
+        lastError = error;
+        if (attempt === maxAttempts) throw error;
+        
+        // Retry network errors
+        if (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT') {
+          await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+          continue;
+        }
+        
+        throw error; // Don't retry other errors
+      }
+    }
+  }
+}));
+```
+
+**Conditional retry based on request type:**
+```js
+app.use(proxy('api.example.com', {
+  retry: async function(handle, ctx) {
+    // Never retry POST/PUT to avoid duplicate operations
+    if (['POST', 'PUT', 'PATCH'].includes(ctx.method)) {
+      return await handle();
+    }
+    
+    // Safe to retry GET/HEAD requests
+    const maxAttempts = 3;
+    let result;
+    
+    for (let i = 1; i <= maxAttempts; i++) {
+      try {
+        result = await handle();
+        if (result.proxy.res.statusCode < 500) break;
+        
+        if (i < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * i));
+        }
+      } catch (error) {
+        if (i === maxAttempts) throw error;
+        await new Promise(resolve => setTimeout(resolve, 1000 * i));
+      }
+    }
+    
+    return result;
+  }
+}));
+```
 
 **Circuit breaker pattern:**
 ```js
+let failureCount = 0;
+let circuitOpen = false;
+let lastFailureTime = 0;
+
 app.use(proxy('api.example.com', {
-  retry: function(executeHandler, ctx) {
-    var failures = global.circuitBreakerFailures || 0;
+  retry: async function(handle, ctx) {
+    const now = Date.now();
     
-    if (failures >= 5) {
-      return Promise.reject(new Error('Circuit breaker open'));
+    // Reset circuit breaker after 60 seconds
+    if (circuitOpen && now - lastFailureTime > 60000) {
+      circuitOpen = false;
+      failureCount = 0;
     }
     
-    return executeHandler()
-      .then(function(result) {
-        global.circuitBreakerFailures = 0; // Reset on success
-        return result;
-      })
-      .catch(function(error) {
-        global.circuitBreakerFailures = failures + 1;
-        
-        if (failures < 3) {
-          // Retry with delay
-          return new Promise(function(resolve, reject) {
-            setTimeout(function() {
-              executeHandler().then(resolve).catch(reject);
-            }, 1000);
-          });
+    if (circuitOpen) {
+      throw new Error('Circuit breaker is open');
+    }
+    
+    try {
+      const result = await handle();
+      
+      if (result.proxy.res.statusCode >= 500) {
+        failureCount++;
+        if (failureCount >= 5) {
+          circuitOpen = true;
+          lastFailureTime = now;
         }
-        
-        throw error;
-      });
+      } else {
+        failureCount = 0; // Reset on success
+      }
+      
+      return result;
+    } catch (error) {
+      failureCount++;
+      lastFailureTime = now;
+      if (failureCount >= 5) {
+        circuitOpen = true;
+      }
+      throw error;
+    }
   }
 }));
 ```
 
-**Retry with monitoring:**
+##### Memory and Performance Considerations
+
+**⚠️ Critical Warning for Large Files:**
+
 ```js
+// DON'T DO THIS for file uploads
+app.use('/upload', proxy('fileserver.com', {
+  retry: true  // ❌ BAD: Will cache large files in memory
+}));
+
+// DO THIS instead
+app.use('/upload', proxy('fileserver.com', {
+  retry: false,  // ✅ GOOD: Disable retry for uploads
+  limit: '100mb' // Handle large files safely
+}));
+
+// Or use conditional retry
 app.use(proxy('api.example.com', {
-  retry: function(executeHandler, ctx) {
-    var attempt = 0;
-    
-    function tryWithLogging() {
-      attempt++;
-      return executeHandler()
-        .then(function(result) {
-          console.log(`Success on attempt ${attempt} for ${ctx.url}`);
-          return result;
-        })
-        .catch(function(error) {
-          console.log(`Attempt ${attempt} failed for ${ctx.url}: ${error.message}`);
-          
-          if (attempt < 3) {
-            var delay = 1000 * attempt;
-            return new Promise(function(resolve, reject) {
-              setTimeout(function() {
-                tryWithLogging().then(resolve).catch(reject);
-              }, delay);
-            });
-          }
-          
-          throw error;
-        });
+  retry: async function(handle, ctx) {
+    // Skip retry for file uploads
+    if (ctx.path.startsWith('/upload') || 
+        parseInt(ctx.headers['content-length']) > 10 * 1024 * 1024) {
+      return await handle();
     }
     
-    return tryWithLogging();
+    // Normal retry logic for other requests
+    return await retryLogic(handle);
   }
 }));
 ```
+
+**Automatic Protection:**
+- Bodies larger than 20MB automatically disable retry with warning logs
+- Error thrown on retry attempts with oversized cached bodies
+- Built-in memory monitoring prevents OOM in most cases
+
+**Best Practices:**
+- ✅ Use retry for API calls, JSON requests, small payloads
+- ❌ Avoid retry for file uploads, large binary data, streaming
+- ✅ Implement conditional retry based on content-type or path
+- ✅ Monitor memory usage in production with large traffic

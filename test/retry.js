@@ -23,12 +23,16 @@ new Koa()
       retry: async (handle, ctx) => {
         const maxAttempts = 3;
         let attempt = 0;
+        let result;
 
         while (attempt++ < maxAttempts) {
           console.info(`Attempt ${attempt} of ${maxAttempts}`);
-          const result = await handle();
+          result = await handle();
           console.info(`Attempt ${attempt} result: ${result.proxy.res?.statusCode}`);
         }
+
+        // CRITICAL FIX: Must return the final result!
+        return result;
       },
 
       proxyReqOptDecorator(proxyReqOpts, ctx) {

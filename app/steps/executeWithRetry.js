@@ -12,6 +12,10 @@ var sendProxyRequest = require("./sendProxyRequest");
 var sendUserRes = require("./sendUserRes");
 var ScopeContainer = require("../../lib/scopeContainer");
 
+// Maximum body size to cache for retries (default: 20MB)
+// Beyond this size, retries will be disabled to prevent OOM
+var MAX_CACHEABLE_BODY_SIZE = 20 * 1024 * 1024; // 20MB
+
 function delay(ms) {
   return new Promise(function (resolve) {
     setTimeout(resolve, ms);
@@ -61,6 +65,25 @@ function calculateRetryDelay(attempt, config) {
   return Math.min(delay, config.maxTimeout);
 }
 
+function getBodySize(bodyContent) {
+  if (!bodyContent) return 0;
+  if (Buffer.isBuffer(bodyContent)) return bodyContent.length;
+  if (typeof bodyContent === "string") return Buffer.byteLength(bodyContent);
+  if (typeof bodyContent === "object") {
+    try {
+      return Buffer.byteLength(JSON.stringify(bodyContent));
+    } catch (e) {
+      return 0;
+    }
+  }
+  return 0;
+}
+
+function shouldCacheBody(bodyContent) {
+  var bodySize = getBodySize(bodyContent);
+  return bodySize <= MAX_CACHEABLE_BODY_SIZE;
+}
+
 function createContainerWithCachedBody(originalContainer, cachedBody) {
   // Create a fresh container for retry with cached body to avoid stream reuse issues
   var freshContainer = new ScopeContainer(
@@ -83,6 +106,7 @@ function executeWithBuiltinRetry(container) {
   var ctx = container.user.ctx;
   var startTime = Date.now();
   var cachedBody = undefined;
+  var canCache = true; // Flag to track if we can cache body
 
   function attemptRequest(attempt) {
     // Use fresh container for retries to avoid stream reuse issues
@@ -93,9 +117,22 @@ function executeWithBuiltinRetry(container) {
 
     return executeProxySteps(currentContainer)
       .then(function (result) {
-        // Cache the body content from the first successful attempt
-        if (attempt === 0 && result.proxy.bodyContent) {
-          cachedBody = result.proxy.bodyContent;
+        // Cache the body content from the first successful attempt (if not too large)
+        if (attempt === 0 && result.proxy.bodyContent && canCache) {
+          if (shouldCacheBody(result.proxy.bodyContent)) {
+            cachedBody = result.proxy.bodyContent;
+          } else {
+            // Body too large to cache - disable retries for safety
+            canCache = false;
+            console.warn('[koa-http-proxy] Body size exceeds cache limit (' + 
+              Math.round(getBodySize(result.proxy.bodyContent) / 1024 / 1024) + 'MB > ' +
+              Math.round(MAX_CACHEABLE_BODY_SIZE / 1024 / 1024) + 'MB). Retries disabled to prevent OOM.');
+          }
+        }
+
+        // Don't retry if we can't cache (large body)
+        if (!canCache) {
+          return result;
         }
 
         // Check if we should retry based on response
@@ -120,6 +157,11 @@ function executeWithBuiltinRetry(container) {
         return result;
       })
       .catch(function (error) {
+        // Don't retry if we can't cache (large body)
+        if (!canCache) {
+          throw error;
+        }
+
         // Check if we've exceeded max retry time
         var elapsedTime = Date.now() - startTime;
         if (elapsedTime >= retryConfig.maxRetryTime) {
@@ -168,6 +210,7 @@ function executeWithRetry(container) {
   if (retryConfig.customHandler) {
     var cachedBody = undefined;
     var isFirstCall = true;
+    var canCache = true;
 
     // Create a simple handle function that user can call multiple times
     var handle = function () {
@@ -179,14 +222,29 @@ function executeWithRetry(container) {
         currentContainer = container;
 
         return executeProxySteps(currentContainer).then(function (result) {
-          // Cache the body content for subsequent calls
-          if (result.proxy.bodyContent) {
-            cachedBody = result.proxy.bodyContent;
+          // Cache the body content for subsequent calls (if not too large)
+          if (result.proxy.bodyContent && canCache) {
+            if (shouldCacheBody(result.proxy.bodyContent)) {
+              cachedBody = result.proxy.bodyContent;
+            } else {
+              // Body too large to cache - warn user but allow continued execution
+              canCache = false;
+              console.warn('[koa-http-proxy] Body size exceeds cache limit (' + 
+                Math.round(getBodySize(result.proxy.bodyContent) / 1024 / 1024) + 'MB > ' +
+                Math.round(MAX_CACHEABLE_BODY_SIZE / 1024 / 1024) + 'MB). ' +
+                'Subsequent retry calls may fail due to stream reuse. ' +
+                'Consider disabling retry for large uploads.');
+            }
           }
           return result;
         });
       } else {
         // Subsequent calls: use fresh container with cached body
+        if (!canCache) {
+          // Cannot safely retry due to large body
+          throw new Error('[koa-http-proxy] Cannot retry: body too large to cache safely. ' +
+            'Disable retry for large file uploads to prevent this error.');
+        }
         currentContainer = createContainerWithCachedBody(container, cachedBody);
         return executeProxySteps(currentContainer);
       }
