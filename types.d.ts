@@ -4,7 +4,7 @@ import * as http from "http";
 declare function koaHttpProxy(
   host: string,
   options?: koaHttpProxy.IOptions,
-): (ctx: koa.Context, next?: koa.Next) => Promise<any>;
+): (ctx: koa.Context, next?: koa.Next) => Promise<void>;
 
 declare namespace koaHttpProxy {
   export interface IRetryOptions {
