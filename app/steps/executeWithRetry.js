@@ -206,6 +206,12 @@ function executeWithRetry(container) {
     return executeProxySteps(container);
   }
 
+  // If parseReqBody is false (streaming mode), disable retry for safety
+  if (!container.options.parseReqBody) {
+    console.log('[koa-http-proxy] Streaming mode detected (parseReqBody: false). Retry disabled for stream safety.');
+    return executeProxySteps(container);
+  }
+
   // If custom retry handler is provided, use it
   if (retryConfig.customHandler) {
     var cachedBody = undefined;

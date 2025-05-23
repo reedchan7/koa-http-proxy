@@ -7,7 +7,15 @@ function buildProxyReq(Container) {
   var options = Container.options;
   var host = Container.proxy.host;
 
-  var parseBody = !options.parseReqBody
+  // Evaluate parseReqBody - can be boolean or function
+  var shouldParseBody;
+  if (typeof options.parseReqBody === 'function') {
+    shouldParseBody = options.parseReqBody(ctx);
+  } else {
+    shouldParseBody = options.parseReqBody;
+  }
+
+  var parseBody = !shouldParseBody
     ? Promise.resolve(null)
     : requestOptions.bodyContent(ctx, options);
   var createReqOptions = requestOptions.create(ctx, options, host);
@@ -16,6 +24,8 @@ function buildProxyReq(Container) {
     function (responseArray) {
       Container.proxy.bodyContent = responseArray[0];
       Container.proxy.reqBuilder = responseArray[1];
+      // Store the resolved parseReqBody value for later use
+      Container.options.parseReqBody = shouldParseBody;
       return Container;
     },
   );

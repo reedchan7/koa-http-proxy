@@ -1,48 +1,48 @@
 # koa-http-proxy
 
-A powerful Koa middleware for proxying HTTP requests to another host with advanced features like retry mechanisms, streaming support, and request/response transformation.
+一个强大的 Koa 中间件，用于将 HTTP 请求代理到另一个主机，具有重试机制、流式传输支持和请求/响应转换等高级功能。
 
-> This repository is forked from [koa-better-http-proxy](https://github.com/nsimmons/koa-better-http-proxy) with significant enhancements.
+> 本仓库从 [koa-better-http-proxy](https://github.com/nsimmons/koa-better-http-proxy) fork 而来，并进行了重大改进。
 
 **🌍 Languages:** [English](README.md) | [中文](README_ZH.md)
 
-## 📋 Table of Contents
+## 📋 目录
 
-- [✨ Features](#-features)
-- [📦 Installation](#-installation)
-- [🚀 Quick Start](#-quick-start)
-- [📚 Usage Guide](#-usage-guide)
-  - [Basic Proxy](#basic-proxy)
-  - [Streaming Mode](#streaming-mode)
-  - [Retry Configuration](#retry-configuration)
-  - [Request/Response Transformation](#requestresponse-transformation)
-- [⚙️ Configuration Reference](#️-configuration-reference)
-- [🔗 Related Resources](#-related-resources)
+- [✨ 功能特性](#-功能特性)
+- [📦 安装](#-安装)
+- [🚀 快速开始](#-快速开始)
+- [📚 使用指南](#-使用指南)
+  - [基础代理](#基础代理)
+  - [流式传输模式](#流式传输模式)
+  - [重试配置](#重试配置)
+  - [请求/响应转换](#请求响应转换)
+- [⚙️ 配置参考](#️-配置参考)
+- [🔗 相关资源](#-相关资源)
 
-## ✨ Features
+## ✨ 功能特性
 
-| Feature | Description | Status |
-|---------|-------------|---------|
-| **🔄 Smart Retry** | Automatic retry with exponential backoff and custom logic | ✅ |
-| **🌊 Streaming Support** | True streaming for large files and real-time data | ✅ |
-| **🔧 Request/Response Transformation** | Modify headers, body, and paths with full async support | ✅ |
-| **📊 Memory Management** | Automatic protection against OOM with large files | ✅ |
-| **⏱️ Timeout Control** | Configurable connection and request timeouts | ✅ |
-| **🛡️ Circuit Breaker** | Built-in patterns for fault tolerance | ✅ |
-| **📝 TypeScript Support** | Full type definitions included | ✅ |
-| **🔍 Conditional Proxy** | Filter requests with custom logic | ✅ |
-| **🗜️ Compression** | Automatic gzip/deflate handling | ✅ |
-| **🔐 Session Preservation** | Maintain user sessions across proxies | ✅ |
+| 功能 | 描述 | 状态 |
+|------|------|------|
+| **🔄 智能重试** | 指数退避和自定义逻辑的自动重试 | ✅ |
+| **🌊 流式传输支持** | 大文件和实时数据的真正流式传输 | ✅ |
+| **🔧 请求/响应转换** | 修改请求头、正文和路径，完全支持异步 | ✅ |
+| **📊 内存管理** | 自动防止大文件导致的内存溢出 | ✅ |
+| **⏱️ 超时控制** | 可配置的连接和请求超时 | ✅ |
+| **🛡️ 熔断器** | 内置容错模式 | ✅ |
+| **📝 TypeScript 支持** | 包含完整的类型定义 | ✅ |
+| **🔍 条件代理** | 使用自定义逻辑过滤请求 | ✅ |
+| **🗜️ 压缩** | 自动 gzip/deflate 处理 | ✅ |
+| **🔐 会话保持** | 跨代理维护用户会话 | ✅ |
 
-## 📦 Installation
+## 📦 安装
 
 ```bash
 npm install @reedchan/koa-http-proxy --save
 ```
 
-## 🚀 Quick Start
+## 🚀 快速开始
 
-### Basic Proxy
+### 基础代理
 
 ```js
 const Koa = require('koa');
@@ -50,18 +50,18 @@ const proxy = require('@reedchan/koa-http-proxy');
 
 const app = new Koa();
 
-// Simple proxy to another host
+// 简单代理到另一个主机
 app.use(proxy('api.example.com'));
 
 app.listen(3000);
 ```
 
-### API Gateway Pattern
+### API 网关模式
 
 ```js
 const app = new Koa();
 
-// Route different paths to different services
+// 将不同路径路由到不同服务
 app.use('/api/users', proxy('user-service.internal'));
 app.use('/api/orders', proxy('order-service.internal'));
 app.use('/api/auth', proxy('auth-service.internal'));
@@ -69,7 +69,7 @@ app.use('/api/auth', proxy('auth-service.internal'));
 app.listen(3000);
 ```
 
-### Load Balancer Pattern
+### 负载均衡模式
 
 ```js
 const servers = ['server1.com', 'server2.com', 'server3.com'];
@@ -82,11 +82,11 @@ app.use(proxy(() => {
 }));
 ```
 
-## 📚 Usage Guide
+## 📚 使用指南
 
-### Basic Proxy
+### 基础代理
 
-The simplest use case - proxy all requests to another host:
+最简单的用例 - 将所有请求代理到另一个主机：
 
 ```js
 app.use(proxy('api.backend.com', {
@@ -95,38 +95,38 @@ app.use(proxy('api.backend.com', {
 }));
 ```
 
-### Streaming Mode
+### 流式传输模式
 
-Perfect for file uploads, downloads, and real-time data:
+适用于文件上传、下载和实时数据：
 
 ```js
-// Enable streaming for file uploads
+// 为文件上传启用流式传输
 app.use('/upload', proxy('fileserver.com', {
-  parseReqBody: false,  // Enable streaming
-  limit: '500mb',       // Support large files
-  timeout: 300000       // 5 minute timeout
+  parseReqBody: false,  // 启用流式传输
+  limit: '500mb',       // 支持大文件
+  timeout: 300000       // 5分钟超时
 }));
 
-// Smart conditional streaming
+// 智能条件流式传输
 app.use(proxy('backend.com', {
   parseReqBody: (ctx) => {
     const size = parseInt(ctx.headers['content-length'] || '0');
-    return size < 20 * 1024 * 1024; // Stream files >20MB
+    return size < 20 * 1024 * 1024; // 大于20MB的文件使用流式传输
   }
 }));
 ```
 
-### Retry Configuration
+### 重试配置
 
-Robust retry mechanisms for unreliable networks:
+针对不稳定网络的强大重试机制：
 
 ```js
-// Simple retry with defaults
+// 使用默认设置的简单重试
 app.use(proxy('api.backend.com', {
-  retry: true  // 3 retries with exponential backoff
+  retry: true  // 3次重试，指数退避
 }));
 
-// Custom retry configuration
+// 自定义重试配置
 app.use(proxy('api.backend.com', {
   retry: {
     retries: 5,
@@ -136,7 +136,7 @@ app.use(proxy('api.backend.com', {
   }
 }));
 
-// Advanced custom retry logic
+// 高级自定义重试逻辑
 app.use(proxy('api.backend.com', {
   retry: async (handle, ctx) => {
     for (let attempt = 1; attempt <= 3; attempt++) {
@@ -156,24 +156,24 @@ app.use(proxy('api.backend.com', {
 }));
 ```
 
-### Request/Response Transformation
+### 请求/响应转换
 
-Modify requests and responses on the fly:
+动态修改请求和响应：
 
 ```js
 app.use(proxy('api.backend.com', {
-  // Transform request path
+  // 转换请求路径
   proxyReqPathResolver: (ctx) => {
     return ctx.path.replace('/api/v1', '/api/v2');
   },
   
-  // Add authentication headers
+  // 添加认证头
   proxyReqOptDecorator: (proxyReqOpts, ctx) => {
     proxyReqOpts.headers['Authorization'] = ctx.headers['authorization'];
     return proxyReqOpts;
   },
   
-  // Transform response
+  // 转换响应
   userResDecorator: (proxyRes, proxyResData, ctx) => {
     const data = JSON.parse(proxyResData.toString());
     data.timestamp = new Date().toISOString();
@@ -182,15 +182,15 @@ app.use(proxy('api.backend.com', {
 }));
 ```
 
-## ⚙️ Configuration Reference
+## ⚙️ 配置参考
 
 <details>
-<summary><strong>Click to expand detailed configuration options</strong></summary>
+<summary><strong>点击展开详细配置选项</strong></summary>
 
-### Core Options
+### 核心选项
 
 #### `agent`
-Use a custom `http.Agent` for proxy requests.
+使用自定义的 `http.Agent` 进行代理请求。
 
 ```js
 const agent = new http.Agent({ keepAlive: true });
@@ -198,21 +198,21 @@ app.use(proxy('api.backend.com', { agent }));
 ```
 
 #### `port`
-The port to use for the proxied host.
+代理主机使用的端口。
 
 ```js
 app.use(proxy('api.backend.com', { port: 8080 }));
 ```
 
 #### `https`
-Force HTTPS for the proxy request.
+强制代理请求使用 HTTPS。
 
 ```js
 app.use(proxy('api.backend.com', { https: true }));
 ```
 
 #### `headers`
-Additional headers to send to the proxied host.
+发送到代理主机的额外请求头。
 
 ```js
 app.use(proxy('api.backend.com', {
@@ -224,7 +224,7 @@ app.use(proxy('api.backend.com', {
 ```
 
 #### `strippedHeaders`
-Headers to remove from proxy response.
+从代理响应中移除的请求头。
 
 ```js
 app.use(proxy('api.backend.com', {
@@ -232,10 +232,10 @@ app.use(proxy('api.backend.com', {
 }));
 ```
 
-### Request Processing
+### 请求处理
 
 #### `filter`
-Filter which requests should be proxied.
+过滤需要代理的请求。
 
 ```js
 app.use(proxy('api.backend.com', {
@@ -246,7 +246,7 @@ app.use(proxy('api.backend.com', {
 ```
 
 #### `proxyReqPathResolver`
-Transform the request path before proxying.
+在代理前转换请求路径。
 
 ```js
 app.use(proxy('api.backend.com', {
@@ -257,7 +257,7 @@ app.use(proxy('api.backend.com', {
 ```
 
 #### `proxyReqOptDecorator`
-Modify request options before sending.
+在发送前修改请求选项。
 
 ```js
 app.use(proxy('api.backend.com', {
@@ -269,7 +269,7 @@ app.use(proxy('api.backend.com', {
 ```
 
 #### `proxyReqBodyDecorator`
-Transform request body before sending.
+在发送前转换请求正文。
 
 ```js
 app.use(proxy('api.backend.com', {
@@ -281,10 +281,10 @@ app.use(proxy('api.backend.com', {
 }));
 ```
 
-### Response Processing
+### 响应处理
 
 #### `userResDecorator`
-Transform response data before sending to client.
+在发送给客户端前转换响应数据。
 
 ```js
 app.use(proxy('api.backend.com', {
@@ -297,7 +297,7 @@ app.use(proxy('api.backend.com', {
 ```
 
 #### `userResHeadersDecorator`
-Transform response headers.
+转换响应头。
 
 ```js
 app.use(proxy('api.backend.com', {
@@ -309,16 +309,16 @@ app.use(proxy('api.backend.com', {
 }));
 ```
 
-### Body Processing
+### 正文处理
 
 #### `parseReqBody`
-Control request body parsing (boolean or function).
+控制请求正文解析（布尔值或函数）。
 
 ```js
-// Disable for streaming
+// 禁用以启用流式传输
 app.use(proxy('api.backend.com', { parseReqBody: false }));
 
-// Conditional parsing
+// 条件解析
 app.use(proxy('api.backend.com', {
   parseReqBody: (ctx) => {
     return !ctx.path.includes('/upload');
@@ -327,82 +327,82 @@ app.use(proxy('api.backend.com', {
 ```
 
 #### `reqAsBuffer`
-Ensure request body is encoded as Buffer.
+确保请求正文编码为 Buffer。
 
 ```js
 app.use(proxy('api.backend.com', { reqAsBuffer: true }));
 ```
 
 #### `reqBodyEncoding`
-Encoding for request body (default: 'utf-8').
+请求正文的编码（默认: 'utf-8'）。
 
 ```js
 app.use(proxy('api.backend.com', { reqBodyEncoding: 'binary' }));
 ```
 
 #### `limit`
-Body size limit (default: '1mb').
+正文大小限制（默认: '1mb'）。
 
 ```js
 app.use(proxy('api.backend.com', { limit: '50mb' }));
 ```
 
-### Session & Security
+### 会话与安全
 
 #### `preserveReqSession`
-Pass session along to proxied request.
+将会话传递给代理请求。
 
 ```js
 app.use(proxy('api.backend.com', { preserveReqSession: true }));
 ```
 
 #### `preserveHostHdr`
-Copy the host HTTP header to proxied request.
+将 host HTTP 头复制到代理请求。
 
 ```js
 app.use(proxy('api.backend.com', { preserveHostHdr: true }));
 ```
 
-### Timeout Configuration
+### 超时配置
 
 #### `connectTimeout`
-Timeout for initial connection.
+初始连接的超时时间。
 
 ```js
 app.use(proxy('api.backend.com', { connectTimeout: 5000 }));
 ```
 
 #### `timeout`
-Overall request timeout.
+整体请求超时时间。
 
 ```js
 app.use(proxy('api.backend.com', { timeout: 30000 }));
 ```
 
-### Retry Configuration
+### 重试配置
 
-#### Simple Retry
+#### 简单重试
 ```js
 app.use(proxy('api.backend.com', { retry: true }));
 ```
 
-#### Advanced Retry
+#### 高级重试
 ```js
 app.use(proxy('api.backend.com', {
   retry: {
-    retries: 5,           // Max retry attempts
-    maxRetryTime: 30000,  // Total retry time limit
-    minTimeout: 1000,     // Initial delay
-    maxTimeout: 10000     // Maximum delay
+    retries: 5,           // 最大重试次数
+    maxRetryTime: 30000,  // 总重试时间限制
+    minTimeout: 1000,     // 初始延迟
+    maxTimeout: 10000     // 最大延迟
   }
 }));
 ```
 
-#### Custom Retry Function
+#### 自定义重试函数
 ```js
 app.use(proxy('api.backend.com', {
   retry: async (handle, ctx) => {
-    // Custom retry logic
+    // 自定义重试逻辑
     let result;
     for (let i = 0; i < 3; i++) {
       result = await handle();
@@ -414,16 +414,16 @@ app.use(proxy('api.backend.com', {
 }));
 ```
 
-> ⚠️ **Memory Warning**: Retry caches request body in memory. For large files (>20MB), retry is automatically disabled. Use `parseReqBody: false` for streaming mode.
+> ⚠️ **内存警告**：重试功能会在内存中缓存请求正文。对于大文件（>20MB），重试会自动禁用。使用 `parseReqBody: false` 启用流式传输模式。
 
 </details>
 
-## 🔗 Related Resources
+## 🔗 相关资源
 
-- **[Streaming Guide](STREAMING.md)** - Comprehensive guide for handling large files and real-time streams
-- **[Examples](examples/)** - Working examples for different use cases
-- **[TypeScript Definitions](types.d.ts)** - Full type definitions for TypeScript users
+- **[流式传输指南](STREAMING.md)** - 处理大文件和实时流的综合指南
+- **[示例](examples/)** - 不同用例的工作示例
+- **[TypeScript 定义](types.d.ts)** - TypeScript 用户的完整类型定义
 
 ---
 
-**Made with ❤️ by the community** | [Report Issues](https://github.com/reedchan7/koa-http-proxy/issues) | [Contribute](https://github.com/reedchan7/koa-http-proxy/pulls)
+**由社区用心制作 ❤️** | [报告问题](https://github.com/reedchan7/koa-http-proxy/issues) | [贡献代码](https://github.com/reedchan7/koa-http-proxy/pulls) 
