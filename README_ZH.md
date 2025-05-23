@@ -379,6 +379,37 @@ app.use(proxy('api.backend.com', { connectTimeout: 5000 }));
 app.use(proxy('api.backend.com', { timeout: 30000 }));
 ```
 
+### 调试选项
+
+#### `debug`
+启用详细的请求日志记录，用于调试和监控。
+
+```js
+// 启用调试日志
+app.use(proxy('api.backend.com', { debug: true }));
+```
+
+**示例输出:**
+```
+========================== KOA-HTTP-PROXY DEBUG ==========================
+POST https://api.backend.com:443/users
+Payload Size: 256 B
+Headers:
+{
+  "content-type": "application/json",
+  "authorization": "Bearer token123",
+  "user-agent": "MyApp/1.0",
+  "content-length": 256
+}
+==========================================================================
+```
+
+**使用场景:**
+- 开发环境调试
+- API 请求监控
+- 性能分析
+- 故障排查
+
 ### 重试配置
 
 #### 简单重试

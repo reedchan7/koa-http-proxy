@@ -1,6 +1,6 @@
 {
   "name": "@reedchan/koa-http-proxy",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "http proxy middleware for koa",
   "engines": {
     "node": ">=18.0.0"

@@ -379,6 +379,37 @@ Overall request timeout.
 app.use(proxy('api.backend.com', { timeout: 30000 }));
 ```
 
+### Debug Options
+
+#### `debug`
+Enable detailed request logging for debugging and monitoring.
+
+```js
+// Enable debug logging
+app.use(proxy('api.backend.com', { debug: true }));
+```
+
+**Example Output:**
+```
+========================== KOA-HTTP-PROXY DEBUG ==========================
+POST https://api.backend.com:443/users
+Payload Size: 256 B
+Headers:
+{
+  "content-type": "application/json",
+  "authorization": "Bearer token123",
+  "user-agent": "MyApp/1.0",
+  "content-length": 256
+}
+==========================================================================
+```
+
+**Use Cases:**
+- Development debugging
+- API monitoring
+- Performance analysis
+- Request troubleshooting
+
 ### Retry Configuration
 
 #### Simple Retry

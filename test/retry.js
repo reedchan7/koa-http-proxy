@@ -19,6 +19,7 @@ new Koa()
   })
   .use(
     proxy(proxyUrl, {
+      debug: true,
       // Simple retry: execute 3 times regardless of success/failure
       retry: async (handle, ctx) => {
         const maxAttempts = 3;
@@ -48,15 +49,15 @@ new Koa()
       },
     }),
   )
-  .listen({ port: 5005 }, () => {
-    console.log("Server started on port 5005");
+  .listen({ port: 5006 }, () => {
+    console.log("Server started on port 5006");
     console.log("");
     console.log("Test commands:");
-    console.log("curl http://localhost:5005/get  # Will execute 3 times");
+    console.log("curl http://localhost:5006/get  # Will execute 3 times");
     console.log(
-      'curl -H "Content-Type: application/json" -d \'{"hello":"world"}\' http://localhost:5005/post  # Will execute 3 times',
+      'curl -H "Content-Type: application/json" -d \'{"hello":"world"}\' http://localhost:5006/post  # Will execute 3 times',
     );
     console.log(
-      "curl http://localhost:5005/status/500  # Will execute 3 times even on 500 error",
+      "curl http://localhost:5006/status/500  # Will execute 3 times even on 500 error",
     );
   });
