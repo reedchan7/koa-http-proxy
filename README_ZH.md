@@ -89,10 +89,63 @@ app.use(proxy(() => {
 最简单的用例 - 将所有请求代理到另一个主机：
 
 ```js
-app.use(proxy('api.backend.com', {
-  port: 443,
-  https: true
-}));
+app.use(async (ctx) => {
+  // 代理后停止（不继续执行下一个中间件）
+  await proxy('api.backend.com', {
+    port: 443,
+    https: true
+  })(ctx);
+});
+```
+
+### Koa 原生中间件模式 ⭐
+
+遵循 Koa 的原生设计哲学，你可以完全控制中间件的执行流程：
+
+```js
+// ✅ 代理后停止 - 不传递 next
+app.use(async (ctx) => {
+  await proxy('api.backend.com')(ctx);
+  // 不调用 next()，执行在此停止
+});
+
+// ✅ 代理后继续 - 传递 next
+app.use(async (ctx, next) => {
+  await proxy('api.backend.com')(ctx, next);
+  // 会调用 next()，继续执行下一个中间件
+});
+
+// ✅ 基于条件的动态控制
+app.use(async (ctx, next) => {
+  const shouldContinue = ctx.path.startsWith('/api/');
+  
+  if (shouldContinue) {
+    await proxy('api.backend.com')(ctx, next); // 继续执行
+  } else {
+    await proxy('api.backend.com')(ctx);       // 停止执行
+  }
+});
+```
+
+### 解决路由重复匹配问题
+
+**问题现象:**
+```js
+// ❌ 两个路由都会对同一请求执行
+router.post('/upload/:version/files', proxy('api.com')); // 执行
+router.all('/(.*)', proxy('api.com'));                   // 也会执行！
+```
+
+**解决方案（Koa 原生方式）:**
+```js
+// ✅ 清晰、明确的控制
+router.post('/upload/:version/files', async (ctx) => {
+  await proxy('api.com')(ctx); // 不传 next - 在此停止
+});
+
+router.all('/(.*)', async (ctx, next) => {
+  await proxy('api.com')(ctx, next); // 需要时继续执行
+});
 ```
 
 ### 流式传输模式
@@ -101,19 +154,29 @@ app.use(proxy('api.backend.com', {
 
 ```js
 // 为文件上传启用流式传输
-app.use('/upload', proxy('fileserver.com', {
-  parseReqBody: false,  // 启用流式传输
-  limit: '500mb',       // 支持大文件
-  timeout: 300000       // 5分钟超时
-}));
+app.use('/upload', async (ctx) => {
+  await proxy('fileserver.com', {
+    parseReqBody: false,  // 启用流式传输
+    limit: '500mb',       // 支持大文件
+    timeout: 300000       // 5分钟超时
+  })(ctx); // 上传后停止
+});
 
 // 智能条件流式传输
-app.use(proxy('backend.com', {
-  parseReqBody: (ctx) => {
-    const size = parseInt(ctx.headers['content-length'] || '0');
-    return size < 20 * 1024 * 1024; // 大于20MB的文件使用流式传输
+app.use(async (ctx, next) => {
+  const proxy_fn = proxy('backend.com', {
+    parseReqBody: (ctx) => {
+      const size = parseInt(ctx.headers['content-length'] || '0');
+      return size < 20 * 1024 * 1024; // 大于20MB的文件使用流式传输
+    }
+  });
+  
+  if (ctx.path.includes('/upload')) {
+    await proxy_fn(ctx); // 上传后停止
+  } else {
+    await proxy_fn(ctx, next); // 其他请求继续执行
   }
-}));
+});
 ```
 
 ### 重试配置

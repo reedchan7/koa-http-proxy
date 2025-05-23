@@ -89,10 +89,63 @@ app.use(proxy(() => {
 The simplest use case - proxy all requests to another host:
 
 ```js
-app.use(proxy('api.backend.com', {
-  port: 443,
-  https: true
-}));
+app.use(async (ctx) => {
+  // Stop after proxy (don't continue to next middleware)
+  await proxy('api.backend.com', {
+    port: 443,
+    https: true
+  })(ctx);
+});
+```
+
+### Koa Native Middleware Pattern ⭐
+
+Following Koa's native design philosophy, you have complete control over middleware execution:
+
+```js
+// ✅ Stop after proxy - don't pass next
+app.use(async (ctx) => {
+  await proxy('api.backend.com')(ctx);
+  // No next() called, execution stops here
+});
+
+// ✅ Continue after proxy - pass next
+app.use(async (ctx, next) => {
+  await proxy('api.backend.com')(ctx, next);
+  // next() will be called, continues to next middleware
+});
+
+// ✅ Dynamic control based on conditions
+app.use(async (ctx, next) => {
+  const shouldContinue = ctx.path.startsWith('/api/');
+  
+  if (shouldContinue) {
+    await proxy('api.backend.com')(ctx, next); // Continue
+  } else {
+    await proxy('api.backend.com')(ctx);       // Stop
+  }
+});
+```
+
+### Solving Route Duplication Issues
+
+**The Problem:**
+```js
+// ❌ Both routes execute for the same request
+router.post('/upload/:version/files', proxy('api.com')); // Executes
+router.all('/(.*)', proxy('api.com'));                   // Also executes!
+```
+
+**The Solution (Koa Native Way):**
+```js
+// ✅ Clean, explicit control
+router.post('/upload/:version/files', async (ctx) => {
+  await proxy('api.com')(ctx); // Don't pass next - stops here
+});
+
+router.all('/(.*)', async (ctx, next) => {
+  await proxy('api.com')(ctx, next); // Continue if needed
+});
 ```
 
 ### Streaming Mode
@@ -101,19 +154,29 @@ Perfect for file uploads, downloads, and real-time data:
 
 ```js
 // Enable streaming for file uploads
-app.use('/upload', proxy('fileserver.com', {
-  parseReqBody: false,  // Enable streaming
-  limit: '500mb',       // Support large files
-  timeout: 300000       // 5 minute timeout
-}));
+app.use('/upload', async (ctx) => {
+  await proxy('fileserver.com', {
+    parseReqBody: false,  // Enable streaming
+    limit: '500mb',       // Support large files
+    timeout: 300000       // 5 minute timeout
+  })(ctx); // Stop after upload
+});
 
 // Smart conditional streaming
-app.use(proxy('backend.com', {
-  parseReqBody: (ctx) => {
-    const size = parseInt(ctx.headers['content-length'] || '0');
-    return size < 20 * 1024 * 1024; // Stream files >20MB
+app.use(async (ctx, next) => {
+  const proxy_fn = proxy('backend.com', {
+    parseReqBody: (ctx) => {
+      const size = parseInt(ctx.headers['content-length'] || '0');
+      return size < 20 * 1024 * 1024; // Stream files >20MB
+    }
+  });
+  
+  if (ctx.path.includes('/upload')) {
+    await proxy_fn(ctx); // Stop after upload
+  } else {
+    await proxy_fn(ctx, next); // Continue for other requests
   }
-}));
+});
 ```
 
 ### Retry Configuration
