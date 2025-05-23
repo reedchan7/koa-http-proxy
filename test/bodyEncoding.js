@@ -1,48 +1,61 @@
-var assert = require('assert');
-var Koa = require('koa');
-var agent = require('supertest').agent;
-var fs = require('fs');
-var os = require('os');
-var proxy = require('../');
-var startProxyTarget = require('./support/proxyTarget');
+var assert = require("assert");
+var Koa = require("koa");
+var agent = require("supertest").agent;
+var fs = require("fs");
+var os = require("os");
+var proxy = require("../");
+var startProxyTarget = require("./support/proxyTarget");
 
 startProxyTarget(8109, 1000);
 
-describe('body encoding', function() {
-  'use strict';
+describe("body encoding", function () {
+  "use strict";
   this.timeout(10000);
 
-  var pngHex = '89504e470d0a1a0a0' +
-               '000000d4948445200' +
-               '00000100000001080' +
-               '60000001f15c48900' +
-               '00000a49444154789' +
-               'c6300010000050001' +
-               '0d0a2db4000000004' +
-               '9454e44ae426082';
-  var pngData = Buffer.from(pngHex, 'hex');
-  var largePngData = Buffer.from(pngHex.repeat(100000), 'hex'); // 6.7MB
+  var pngHex =
+    "89504e470d0a1a0a0" +
+    "000000d4948445200" +
+    "00000100000001080" +
+    "60000001f15c48900" +
+    "00000a49444154789" +
+    "c6300010000050001" +
+    "0d0a2db4000000004" +
+    "9454e44ae426082";
+  var pngData = Buffer.from(pngHex, "hex");
+  var largePngData = Buffer.from(pngHex.repeat(100000), "hex"); // 6.7MB
 
-  it('allow raw data', function(done) {
-    var filename = os.tmpdir() + '/koa-http-proxy-test-' + (new Date()).getTime() + '-png-transparent.png';
+  it("allow raw data", function (done) {
+    var filename =
+      os.tmpdir() +
+      "/koa-http-proxy-test-" +
+      new Date().getTime() +
+      "-png-transparent.png";
     var app = new Koa();
 
-    app.use(proxy('localhost:8109', {
-      reqBodyEncoding: null,
-      proxyReqBodyDecorator: function(bodyContent) {
-        assert((Buffer.from(bodyContent).toString('hex')).indexOf(pngData.toString('hex')) >= 0,
-          'body should contain same data');
-        return bodyContent;
-      }
-    }));
+    app.use(
+      proxy("localhost:8109", {
+        reqBodyEncoding: null,
+        proxyReqBodyDecorator: function (bodyContent) {
+          assert(
+            Buffer.from(bodyContent)
+              .toString("hex")
+              .indexOf(pngData.toString("hex")) >= 0,
+            "body should contain same data",
+          );
+          return bodyContent;
+        },
+      }),
+    );
 
-    fs.writeFile(filename, pngData, function(err) {
-      if (err) { throw err; }
+    fs.writeFile(filename, pngData, function (err) {
+      if (err) {
+        throw err;
+      }
       agent(app.callback())
-        .post('/post')
-        .attach('image', filename)
-        .end(function(err) {
-          fs.unlink(filename, function() {});
+        .post("/post")
+        .attach("image", filename)
+        .end(function (err) {
+          fs.unlink(filename, function () {});
           // This test is both broken and I think unnecessary.
           // Its broken because http.bin no longer supports /post, but this test assertion is based on the old
           // httpbin behavior.
@@ -52,72 +65,95 @@ describe('body encoding', function() {
           done(err);
         });
     });
-
   });
 
   // In this case, the package `raw-body` will print error stack which does not mater.
-  it('should get 413 by posting file which is larger than 1mb without setting limit', function(done) {
-    var filename = os.tmpdir() + '/koa-http-proxy-test-' + (new Date()).getTime() + '-png-transparent.png';
+  it("should get 413 by posting file which is larger than 1mb without setting limit", function (done) {
+    var filename =
+      os.tmpdir() +
+      "/koa-http-proxy-test-" +
+      new Date().getTime() +
+      "-png-transparent.png";
     var app = new Koa();
-    app.use(proxy('localhost:8109', {
-    }));
-    fs.writeFile(filename, largePngData, function(err) {
-      if (err) { throw err; }
+    app.use(proxy("localhost:8109", {}));
+    fs.writeFile(filename, largePngData, function (err) {
+      if (err) {
+        throw err;
+      }
       agent(app.callback())
-        .post('/post')
-        .attach('image', filename)
+        .post("/post")
+        .attach("image", filename)
         .expect(413)
-        .end(function(err) {
-          fs.unlink(filename, function() {});
+        .end(function (err) {
+          fs.unlink(filename, function () {});
           assert(err === null);
-          if (err) { return done(err); }
+          if (err) {
+            return done(err);
+          }
           done();
         });
     });
   });
 
-  it('should not fail on large limit', function(done) {
-    var filename = os.tmpdir() + '/koa-http-proxy-test-' + (new Date()).getTime() + '-png-transparent.png';
+  it("should not fail on large limit", function (done) {
+    var filename =
+      os.tmpdir() +
+      "/koa-http-proxy-test-" +
+      new Date().getTime() +
+      "-png-transparent.png";
     var app = new Koa();
-    app.use(proxy('localhost:8109', {
-      // This case `parseReqBody` should not be set to false,
-      limit: '20gb',
-    }));
-    fs.writeFile(filename, largePngData, function(err) {
-      if (err) { throw err; }
+    app.use(
+      proxy("localhost:8109", {
+        // This case `parseReqBody` should not be set to false,
+        limit: "20gb",
+      }),
+    );
+    fs.writeFile(filename, largePngData, function (err) {
+      if (err) {
+        throw err;
+      }
       agent(app.callback())
-        .post('/post')
-        .attach('image', filename)
+        .post("/post")
+        .attach("image", filename)
         .expect(200)
-        .end(function(err) {
-          fs.unlink(filename, function() {});
+        .end(function (err) {
+          fs.unlink(filename, function () {});
           assert(err === null);
-          if (err) { return done(err); }
+          if (err) {
+            return done(err);
+          }
           done();
         });
     });
   });
 
-  describe('when user sets parseReqBody', function() {
-
-    it('should not parse body', function(done) {
-      var filename = os.tmpdir() + '/koa-http-proxy-test-' + (new Date()).getTime() + '-png-transparent.png';
+  describe("when user sets parseReqBody", function () {
+    it("should not parse body", function (done) {
+      var filename =
+        os.tmpdir() +
+        "/koa-http-proxy-test-" +
+        new Date().getTime() +
+        "-png-transparent.png";
       var app = new Koa();
-      app.use(proxy('localhost:8109', {
-        parseReqBody: false,
-        proxyReqBodyDecorator: function(bodyContent) {
-          assert(!bodyContent, 'body content should not be parsed.');
-          return bodyContent;
-        }
-      }));
+      app.use(
+        proxy("localhost:8109", {
+          parseReqBody: false,
+          proxyReqBodyDecorator: function (bodyContent) {
+            assert(!bodyContent, "body content should not be parsed.");
+            return bodyContent;
+          },
+        }),
+      );
 
-      fs.writeFile(filename, pngData, function(err) {
-        if (err) { throw err; }
+      fs.writeFile(filename, pngData, function (err) {
+        if (err) {
+          throw err;
+        }
         agent(app.callback())
-          .post('/post')
-          .attach('image', filename)
-          .end(function(err) {
-            fs.unlink(filename, function() {});
+          .post("/post")
+          .attach("image", filename)
+          .end(function (err) {
+            fs.unlink(filename, function () {});
             // This test is both broken and I think unnecessary.
             // Its broken because http.bin no longer supports /post, but this test assertion is based on the old
             // httpbin behavior.
@@ -128,25 +164,25 @@ describe('body encoding', function() {
           });
       });
     });
-
   });
 
-  describe('when user sets reqBodyEncoding', function() {
-
-    it('should set the accepts-charset header', function(done) {
+  describe("when user sets reqBodyEncoding", function () {
+    it("should set the accepts-charset header", function (done) {
       var app = new Koa();
-      app.use(proxy('httpbin.org', {
-        reqBodyEncoding: 'utf-16'
-      }));
+      app.use(
+        proxy("httpbin.org", {
+          reqBodyEncoding: "utf-16",
+        }),
+      );
       agent(app.callback())
-        .get('/headers')
-        .end(function(err, res) {
-          if (err) { throw err; }
-          assert.equal(res.body.headers['Accept-Charset'], 'utf-16');
+        .get("/headers")
+        .end(function (err, res) {
+          if (err) {
+            throw err;
+          }
+          assert.equal(res.body.headers["Accept-Charset"], "utf-16");
           done(err);
         });
     });
-
   });
-
 });

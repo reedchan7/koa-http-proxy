@@ -1,33 +1,32 @@
-'use strict';
+"use strict";
 
-var as = require('../../lib/as');
+var as = require("../../lib/as");
 
 function getContentLength(body) {
-
   var result;
-  if (Buffer.isBuffer(body)) { // Buffer
+  if (Buffer.isBuffer(body)) {
+    // Buffer
     result = body.length;
-  } else if (typeof body === 'string') {
+  } else if (typeof body === "string") {
     result = Buffer.byteLength(body);
   }
   return result;
 }
 
-
 function prepareProxyReq(container) {
-  return new Promise(function(resolve) {
+  return new Promise(function (resolve) {
     var bodyContent = container.proxy.bodyContent;
     var reqOpt = container.proxy.reqBuilder;
 
     if (bodyContent) {
-      bodyContent = container.options.reqAsBuffer ?
-        as.buffer(bodyContent, container.options) :
-        as.bufferOrString(bodyContent);
+      bodyContent = container.options.reqAsBuffer
+        ? as.buffer(bodyContent, container.options)
+        : as.bufferOrString(bodyContent);
 
-      reqOpt.headers['content-length'] = getContentLength(bodyContent);
+      reqOpt.headers["content-length"] = getContentLength(bodyContent);
 
       if (container.options.reqBodyEncoding) {
-        reqOpt.headers['accept-charset'] = container.options.reqBodyEncoding;
+        reqOpt.headers["accept-charset"] = container.options.reqBodyEncoding;
       }
     }
 
@@ -37,4 +36,3 @@ function prepareProxyReq(container) {
 }
 
 module.exports = prepareProxyReq;
-

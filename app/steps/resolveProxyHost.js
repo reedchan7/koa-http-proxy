@@ -1,5 +1,5 @@
-'use strict';
-var requestOptions = require('../../lib/requestOptions');
+"use strict";
+var requestOptions = require("../../lib/requestOptions");
 
 function resolveProxyHost(container) {
   var parsedHost = requestOptions.parseHost(container);

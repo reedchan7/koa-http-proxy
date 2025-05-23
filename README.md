@@ -346,3 +346,161 @@ app.use(proxy('httpbin.org', {
   timeout: 2000  // in milliseconds, two seconds
 }));
 ```
+
+#### retry
+
+Configure automatic retry behavior for failed proxy requests. Supports three forms:
+
+##### Simple retry (boolean)
+
+Enable retry with default settings:
+
+```js
+app.use(proxy('httpbin.org', {
+  retry: true  // Uses default: 3 retries, 1s min timeout, exponential backoff
+}));
+```
+
+##### Custom retry configuration (object)
+
+Configure retry behavior with custom parameters:
+
+```js
+app.use(proxy('httpbin.org', {
+  retry: {
+    retries: 5,           // Maximum number of retry attempts (default: 3)
+    maxRetryTime: 30000,  // Maximum total time for all retries in ms (default: Infinity)
+    minTimeout: 500,      // Initial retry delay in ms (default: 1000)
+    maxTimeout: 10000     // Maximum retry delay in ms (default: Infinity)
+  }
+}));
+```
+
+**Parameters:**
+- `retries` - Maximum number of retry attempts (default: 3)
+- `maxRetryTime` - Maximum total time allowed for all retries in milliseconds (default: Infinity)
+- `minTimeout` - Initial retry delay in milliseconds (default: 1000)
+- `maxTimeout` - Maximum retry delay in milliseconds (default: Infinity)
+
+The built-in retry logic uses exponential backoff with jitter and automatically retries on:
+- Network errors (ECONNRESET, ECONNREFUSED, ETIMEDOUT, ENOTFOUND)
+- Server errors (5xx status codes)
+
+##### Custom retry function
+
+Implement your own retry logic with full control:
+
+```js
+app.use(proxy('httpbin.org', {
+  retry: function(executeHandler, ctx) {
+    // executeHandler is a function that performs the proxy request
+    // ctx is the Koa context object
+    
+    // Example: Custom retry with different logic for different methods
+    if (ctx.method === 'POST') {
+      // Don't retry POST requests to avoid duplicates
+      return executeHandler();
+    }
+    
+    // Custom retry logic for GET requests
+    var maxAttempts = 3;
+    var attempt = 0;
+    
+    function tryRequest() {
+      return executeHandler()
+        .catch(function(error) {
+          attempt++;
+          
+          // Don't retry client errors (4xx)
+          if (error.status >= 400 && error.status < 500) {
+            throw error;
+          }
+          
+          // Retry on network errors and server errors
+          if (attempt < maxAttempts && 
+              (error.code === 'ECONNRESET' || error.status >= 500)) {
+            var delay = 1000 * Math.pow(2, attempt - 1); // Exponential backoff
+            return new Promise(function(resolve, reject) {
+              setTimeout(function() {
+                tryRequest().then(resolve).catch(reject);
+              }, delay);
+            });
+          }
+          
+          throw error;
+        });
+    }
+    
+    return tryRequest();
+  }
+}));
+```
+
+##### Advanced Examples
+
+**Circuit breaker pattern:**
+```js
+app.use(proxy('api.example.com', {
+  retry: function(executeHandler, ctx) {
+    var failures = global.circuitBreakerFailures || 0;
+    
+    if (failures >= 5) {
+      return Promise.reject(new Error('Circuit breaker open'));
+    }
+    
+    return executeHandler()
+      .then(function(result) {
+        global.circuitBreakerFailures = 0; // Reset on success
+        return result;
+      })
+      .catch(function(error) {
+        global.circuitBreakerFailures = failures + 1;
+        
+        if (failures < 3) {
+          // Retry with delay
+          return new Promise(function(resolve, reject) {
+            setTimeout(function() {
+              executeHandler().then(resolve).catch(reject);
+            }, 1000);
+          });
+        }
+        
+        throw error;
+      });
+  }
+}));
+```
+
+**Retry with monitoring:**
+```js
+app.use(proxy('api.example.com', {
+  retry: function(executeHandler, ctx) {
+    var attempt = 0;
+    
+    function tryWithLogging() {
+      attempt++;
+      return executeHandler()
+        .then(function(result) {
+          console.log(`Success on attempt ${attempt} for ${ctx.url}`);
+          return result;
+        })
+        .catch(function(error) {
+          console.log(`Attempt ${attempt} failed for ${ctx.url}: ${error.message}`);
+          
+          if (attempt < 3) {
+            var delay = 1000 * attempt;
+            return new Promise(function(resolve, reject) {
+              setTimeout(function() {
+                tryWithLogging().then(resolve).catch(reject);
+              }, delay);
+            });
+          }
+          
+          throw error;
+        });
+    }
+    
+    return tryWithLogging();
+  }
+}));
+```

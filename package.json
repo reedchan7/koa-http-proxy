@@ -13,6 +13,8 @@
     "mocha": "mocha -R spec test --recursive",
     "lint": "jshint index.js test/*.js test/**/*js lib/*js app/**/*js ",
     "jscs": "jscs index.js test/*.js test/**/*js lib/*js app/**/*js",
+    "prettier": "prettier '**/*.{ts,js,json,yml,yaml}' --write",
+    "prettier:check": "prettier '**/*.{ts,js,json,yml,yaml}' --check",
     "pub": "pnpm run version && pnpm publish --access public"
   },
   "repository": {
@@ -51,6 +53,7 @@
     "jshint": "^2.13.6",
     "koa": "^2.16.1",
     "mocha": "^11.4.0",
+    "prettier": "^3.5.3",
     "supertest": "^7.1.1"
   },
   "dependencies": {
