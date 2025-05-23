@@ -385,14 +385,22 @@ app.use(proxy('api.backend.com', { timeout: 30000 }));
 Enable detailed request logging for debugging and monitoring.
 
 ```js
-// Enable debug logging
+// Enable basic debug logging
 app.use(proxy('api.backend.com', { debug: true }));
+
+// Use object configuration for debug options
+app.use(proxy('api.backend.com', { 
+  debug: { 
+    enabled: true, 
+    includeBody: true  // Include request body content
+  } 
+}));
 ```
 
 **Example Output:**
 ```
-========================== KOA-HTTP-PROXY DEBUG ==========================
-POST https://api.backend.com:443/users
+======================================= KOA-HTTP-PROXY DEBUG =======================================
+POST https://api.backend.com/users
 Payload Size: 256 B
 Headers:
 {
@@ -401,8 +409,23 @@ Headers:
   "user-agent": "MyApp/1.0",
   "content-length": 256
 }
-==========================================================================
+Request Body:
+{
+  "name": "John Doe",
+  "email": "john@example.com"
+}
+====================================================================================================
 ```
+
+**Configuration Options:**
+- `enabled`: Whether to enable debug logging (default: false)
+- `includeBody`: Whether to include request body content in logs (default: false)
+
+**Features:**
+- Automatically hide standard ports (HTTP 80, HTTPS 443)
+- Smart JSON formatting
+- No body parsing for GET/HEAD/DELETE/OPTIONS requests
+- Precise file size display
 
 **Use Cases:**
 - Development debugging

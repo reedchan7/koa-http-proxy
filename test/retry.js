@@ -19,7 +19,7 @@ new Koa()
   })
   .use(
     proxy(proxyUrl, {
-      debug: true,
+      debug: { enabled: true, includeBody: true },
       // Simple retry: execute 3 times regardless of success/failure
       retry: async (handle, ctx) => {
         const maxAttempts = 3;

@@ -385,14 +385,22 @@ app.use(proxy('api.backend.com', { timeout: 30000 }));
 启用详细的请求日志记录，用于调试和监控。
 
 ```js
-// 启用调试日志
+// 启用基础调试日志
 app.use(proxy('api.backend.com', { debug: true }));
+
+// 使用对象配置调试选项
+app.use(proxy('api.backend.com', { 
+  debug: { 
+    enabled: true, 
+    includeBody: true  // 包含请求体内容
+  } 
+}));
 ```
 
 **示例输出:**
 ```
-========================== KOA-HTTP-PROXY DEBUG ==========================
-POST https://api.backend.com:443/users
+======================================= KOA-HTTP-PROXY DEBUG =======================================
+POST https://api.backend.com/users
 Payload Size: 256 B
 Headers:
 {
@@ -401,8 +409,23 @@ Headers:
   "user-agent": "MyApp/1.0",
   "content-length": 256
 }
-==========================================================================
+Request Body:
+{
+  "name": "张三",
+  "email": "zhangsan@example.com"
+}
+====================================================================================================
 ```
+
+**配置选项:**
+- `enabled`: 是否启用调试日志（默认: false）
+- `includeBody`: 是否在日志中包含请求体内容（默认: false）
+
+**功能特性:**
+- 自动隐藏标准端口号（HTTP 80, HTTPS 443）
+- 智能 JSON 格式化
+- 对 GET/HEAD/DELETE/OPTIONS 请求不解析请求体
+- 精确的文件大小显示
 
 **使用场景:**
 - 开发环境调试

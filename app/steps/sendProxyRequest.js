@@ -24,23 +24,71 @@ function formatSize(bytes) {
 }
 
 function debugLogRequest(reqOpt, bodyContent, options) {
-  if (!options.debug) return;
+  // Handle both boolean and object debug configurations
+  var debugEnabled = false;
+  var includeBody = false;
+  
+  if (options.debug === true) {
+    debugEnabled = true;
+    includeBody = false;
+  } else if (options.debug && typeof options.debug === 'object') {
+    debugEnabled = options.debug.enabled;
+    includeBody = options.debug.includeBody;
+  }
+  
+  if (!debugEnabled) return;
 
   var protocol = reqOpt.port === 443 || options.https ? "https" : "http";
-  var url = protocol + "://" + reqOpt.host + ":" + reqOpt.port + reqOpt.path;
+  var isStandardPort = (protocol === "https" && reqOpt.port === 443) || 
+                       (protocol === "http" && reqOpt.port === 80);
+  var url = protocol + "://" + reqOpt.host + 
+            (isStandardPort ? "" : ":" + reqOpt.port) + reqOpt.path;
   var payloadSize = getPayloadSize(bodyContent);
 
   console.log("");
-  console.log("========================== KOA-HTTP-PROXY DEBUG ==========================");
+  console.log(
+    "======================================= KOA-HTTP-PROXY DEBUG ======================================="
+  );
   console.log(reqOpt.method + " " + url);
-  
+
   if (payloadSize > 0) {
     console.log("Payload Size: " + formatSize(payloadSize));
   }
-  
+
   console.log("Headers:");
   console.log(JSON.stringify(reqOpt.headers, null, 2));
-  console.log("==========================================================================");
+
+  // Print request body if enabled and exists
+  if (includeBody && bodyContent) {
+    console.log("Request Body:");
+    try {
+      // Try to parse as JSON and format it
+      if (typeof bodyContent === 'string') {
+        var parsed = JSON.parse(bodyContent);
+        console.log(JSON.stringify(parsed, null, 2));
+      } else if (Buffer.isBuffer(bodyContent)) {
+        // Try to parse buffer as JSON
+        try {
+          var parsed = JSON.parse(bodyContent.toString());
+          console.log(JSON.stringify(parsed, null, 2));
+        } catch (e) {
+          // If not JSON, show as string
+          console.log(bodyContent.toString());
+        }
+      } else if (typeof bodyContent === 'object') {
+        console.log(JSON.stringify(bodyContent, null, 2));
+      } else {
+        console.log(bodyContent);
+      }
+    } catch (e) {
+      // If JSON parsing fails, show as is
+      console.log(bodyContent);
+    }
+  }
+
+  console.log(
+    "===================================================================================================="
+  );
   console.log("");
 }
 
@@ -52,10 +100,10 @@ function sendProxyRequest(Container) {
 
   return new Promise(function (resolve, reject) {
     var protocol = Container.proxy.requestModule;
-    
+
     // Debug logging
     debugLogRequest(reqOpt, bodyContent, options);
-    
+
     var proxyReq = protocol.request(reqOpt, function (rsp) {
       var chunks = [];
       rsp.on("data", function (chunk) {
@@ -107,7 +155,7 @@ function sendProxyRequest(Container) {
           "X-Timout-Reason",
           "koa-http-proxy timed out your request after " +
             timeoutDuration +
-            "ms.",
+            "ms."
         );
         ctx.set("Content-Type", "text/plain");
         ctx.status = 504;
@@ -128,7 +176,7 @@ function sendProxyRequest(Container) {
       //bodyContent = JSON.stringify(bodyContent);
       //}
 
-      if (bodyContent.length) {
+      if (bodyContent && bodyContent.length) {
         proxyReq.write(bodyContent);
       }
       proxyReq.end();
